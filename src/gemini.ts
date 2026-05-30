@@ -1,139 +1,217 @@
-import type { Memory, MemoryCategory } from './db';
+import type { Memory, MemoryCategory, Interest, Person } from './db';
 
 const MODEL = 'gemini-1.5-flash';
 
-function getApiKey(): string {
+export function getApiKey(): string {
   return localStorage.getItem('gemini_api_key') ?? '';
 }
 
-async function callGemini(prompt: string): Promise<string> {
+async function post(body: object): Promise<string> {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('請先設定 Gemini API Key');
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { response_mime_type: 'application/json' },
-    }),
-  });
-
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  );
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error((err as { error?: { message?: string } }).error?.message ?? `API 錯誤 ${resp.status}`);
+    const err = await resp.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(err.error?.message ?? `API 錯誤 ${resp.status}`);
   }
-
   const data = await resp.json() as { candidates: { content: { parts: { text: string }[] } }[] };
   return data.candidates[0].content.parts[0].text.trim();
 }
 
-async function callGeminiText(prompt: string): Promise<string> {
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error('請先設定 Gemini API Key');
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-    }),
+function jsonPost(prompt: string) {
+  return post({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { response_mime_type: 'application/json' },
   });
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error((err as { error?: { message?: string } }).error?.message ?? `API 錯誤 ${resp.status}`);
-  }
-
-  const data = await resp.json() as { candidates: { content: { parts: { text: string }[] } }[] };
-  return data.candidates[0].content.parts[0].text.trim();
 }
 
+function textPost(prompt: string) {
+  return post({ contents: [{ parts: [{ text: prompt }] }] });
+}
+
+// --- 聊天擷取 ---
 export interface ExtractedMemory {
   content: string;
   category: MemoryCategory;
   tags: string[];
 }
 
-export async function extractMemories(chatText: string): Promise<ExtractedMemory[]> {
-  const prompt = `你是一個戀愛記憶擷取助手。從以下聊天紀錄中，擷取關於「對方（非我）」的重要個人資訊。
+export async function extractMemories(chatText: string, person: Person): Promise<ExtractedMemory[]> {
+  const raw = await jsonPost(
+    `你是一個人際記憶擷取助手。從以下聊天紀錄中，擷取關於「${person.name}（${person.relationship}）」的重要個人資訊。
 
 聊天紀錄：
 ${chatText}
 
 擷取規則：
-- 只記錄對方說的事，忽略日常寒暄（「嗯」「好」「哈哈」「在哪」等）
+- 只記錄 ${person.name} 說的事，忽略日常寒暄
 - 每條記憶要具體，一句話說清楚
-- category 只能是以下其中一個：喜好、不喜歡、故事、想做的事、家人朋友、重要日期、隨手記
-- tags 是 2-4 個關鍵字，用於之後搜尋
+- category 只能是：喜好、不喜歡、故事、想做的事、家人朋友、重要日期、隨手記
+- tags 是 2-4 個關鍵字
 
-回傳 JSON array（若沒有值得記錄的內容則回傳空 array []）：
-[
-  {
-    "content": "具體的記憶內容",
-    "category": "喜好",
-    "tags": ["關鍵字1", "關鍵字2"]
-  }
-]`;
-
-  const raw = await callGemini(prompt);
+回傳 JSON array（沒有值得記錄的就回傳 []）：
+[{"content":"...","category":"喜好","tags":["關鍵字1","關鍵字2"]}]`
+  );
   const parsed = JSON.parse(raw) as ExtractedMemory[];
   return Array.isArray(parsed) ? parsed : [];
 }
 
-export async function queryMemories(question: string, memories: Memory[]): Promise<string> {
-  if (memories.length === 0) return '記憶庫還是空的，先去「記憶庫」頁面貼入聊天紀錄吧！';
-
-  const memoryList = memories
-    .map(m => `[${m.category}] ${m.content}（標籤：${m.tags.join('、')}）`)
-    .join('\n');
-
-  const prompt = `你是一個戀愛記憶助手。根據以下對方的個人記憶，回答使用者的問題。
-
-對方的記憶庫：
-${memoryList}
-
-使用者問題：${question}
-
-回答要求：
-- 直接從記憶庫找相關資訊回答
-- 如果記憶庫沒有相關資訊，誠實說「記憶庫裡沒有這方面的記錄」
-- 語氣自然、口語化，像在提醒朋友
-- 若有多條相關記憶，全部列出`;
-
-  return callGeminiText(prompt);
+// --- 截圖分析 ---
+export interface ExtractedInterest {
+  content: string;
+  confidence: 'high' | 'medium' | 'low';
+  sourceDescription: string;
+  tags: string[];
 }
 
-export async function analyzeForGift(input: string, memories: Memory[]): Promise<string> {
-  const likeMemories = memories
-    .filter(m => m.category === '喜好' || m.category === '想做的事')
-    .map(m => `- ${m.content}`)
-    .join('\n');
+export async function analyzeScreenshot(imageBase64: string, person: Person): Promise<ExtractedInterest[]> {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('請先設定 Gemini API Key');
 
-  const dislikeMemories = memories
-    .filter(m => m.category === '不喜歡')
-    .map(m => `- ${m.content}`)
-    .join('\n');
+  const mimeType = imageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+  const base64Data = imageBase64.split(',')[1];
 
-  const prompt = `你是一個懂浪漫的禮物顧問。根據以下資料，分析對方可能喜歡什麼禮物。
+  const prompt = `這是一張截圖，可能是 ${person.name}（${person.relationship}）分享給我的 IG 貼文、小紅書筆記、Threads 貼文或其他內容。
 
-已知對方喜好：
-${likeMemories || '（尚無記錄）'}
+請分析截圖內容，推測這個人的興趣、喜好、或生活風格。
 
-已知對方不喜歡：
-${dislikeMemories || '（尚無記錄）'}
+回傳 JSON array：
+[{
+  "content": "從截圖推測的一個興趣或喜好（具體一句話）",
+  "confidence": "high/medium/low（確信程度）",
+  "sourceDescription": "截圖裡看到了什麼，讓你這樣推測",
+  "tags": ["關鍵字1","關鍵字2"]
+}]
 
-對方最近分享或提到的內容：
-${input}
+confidence 說明：high=截圖明確顯示、medium=有一定根據、low=推測
+沒有有用資訊就回傳 []`;
+
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: mimeType, data: base64Data } },
+          ],
+        }],
+        generationConfig: { response_mime_type: 'application/json' },
+      }),
+    }
+  );
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(err.error?.message ?? `API 錯誤 ${resp.status}`);
+  }
+  const data = await resp.json() as { candidates: { content: { parts: { text: string }[] } }[] };
+  const raw = data.candidates[0].content.parts[0].text.trim();
+  const parsed = JSON.parse(raw) as ExtractedInterest[];
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+// --- 八字計算 ---
+export async function calculateBazi(person: Person): Promise<string> {
+  const birthInfo = [
+    person.birthDate && `出生日期：${person.birthDate}`,
+    person.birthTime && `出生時間：${person.birthTime}`,
+    person.birthPlace && `出生地點：${person.birthPlace}`,
+  ].filter(Boolean).join('\n');
+
+  return textPost(
+    `請根據以下資料計算八字四柱，並給出性格分析。
+
+${birthInfo}
 
 請回答：
-1. **TA 的興趣方向**（從以上資料推測）
-2. **具體禮物建議**（3-5 個，說明為什麼適合）
-3. **要避開的雷區**（根據不喜歡的記錄）
+**四柱八字**
+年柱：＿＿ 月柱：＿＿ 日柱：＿＿ 時柱：＿＿
 
-語氣要溫暖、實用，像好友在給建議。`;
+**性格特質**（3-5 點，具體描述）
 
-  return callGeminiText(prompt);
+**優勢**（2-3 點）
+
+**需要注意的地方**（2-3 點）
+
+**與人相處的風格**
+
+語氣自然，不要太玄學，重點放在實用的性格描述。`
+  );
+}
+
+// --- 查詢 ---
+export async function queryPerson(
+  question: string,
+  person: Person,
+  memories: Memory[],
+  interests: Interest[]
+): Promise<string> {
+  const memList = memories.map(m => `[${m.category}${m.outdated ? '・已過時' : ''}] ${m.content}`).join('\n') || '（尚無記錄）';
+  const intList = interests.map(i => `[${i.confidence === 'high' ? '高確信' : i.confidence === 'medium' ? '中確信' : '推測'} ] ${i.content}`).join('\n') || '（尚無記錄）';
+
+  return textPost(
+    `你是一個人際記憶助手。根據以下資料，回答關於「${person.name}（${person.relationship}）」的問題。
+
+說過的話（明確記憶）：
+${memList}
+
+喜歡的東西（從截圖推測）：
+${intList}
+
+問題：${question}
+
+回答要求：
+- 直接從記憶找答案，沒有就說沒有記錄
+- 區分「TA 明確說過」和「從截圖推測」
+- 語氣自然口語`
+  );
+}
+
+// --- 禮物分析 ---
+export async function analyzeGift(
+  input: string,
+  person: Person,
+  memories: Memory[],
+  interests: Interest[]
+): Promise<string> {
+  const likes = memories.filter(m => m.category === '喜好' && !m.outdated).map(m => `- ${m.content}`).join('\n') || '（無記錄）';
+  const dislikes = memories.filter(m => m.category === '不喜歡').map(m => `- ${m.content}`).join('\n') || '（無記錄）';
+  const wishes = memories.filter(m => m.category === '想做的事').map(m => `- ${m.content}`).join('\n') || '（無記錄）';
+  const inferredInterests = interests.map(i => `- ${i.content}（${i.confidence === 'high' ? '確定' : '推測'}）`).join('\n') || '（無記錄）';
+
+  const baziHint = person.baziResult ? `\n命盤特質：${person.baziResult.slice(0, 200)}` : '';
+
+  return textPost(
+    `你是一個懂浪漫的禮物顧問。幫我想送給「${person.name}（${person.relationship}）」的禮物。
+
+已知喜好：
+${likes}
+
+已知不喜歡：
+${dislikes}
+
+想做的事：
+${wishes}
+
+從分享內容推測的興趣：
+${inferredInterests}
+${baziHint}
+
+最近觀察到的情況：
+${input}
+
+請提供：
+1. **TA 的整體興趣輪廓**
+2. **具體禮物建議**（3-5 個，每個說明為什麼適合）
+3. **要避開的雷區**
+
+語氣溫暖實用，像好友在給建議。`
+  );
 }
