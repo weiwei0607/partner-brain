@@ -102,5 +102,9 @@ class RelationBrainDB extends Dexie {
 export const db = new RelationBrainDB();
 
 export function generateId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // fallback for older browsers
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }

@@ -85,24 +85,41 @@ export default function App() {
   useEffect(() => { loadPersons(); }, []);
 
   async function loadPersons() {
-    const all = await db.persons.orderBy('createdAt').toArray();
-    setPersons(all);
+    try {
+      const all = await db.persons.orderBy('createdAt').toArray();
+      setPersons(all);
+    } catch (err) {
+      console.error('載入人物失敗:', err);
+      alert('載入資料失敗，請重新整理頁面');
+    }
   }
 
   async function refreshActivePerson() {
     if (!activePerson) return;
-    const updated = await db.persons.get(activePerson.id);
-    if (updated) setActivePerson(updated);
-    loadPersons();
+    try {
+      const updated = await db.persons.get(activePerson.id);
+      if (updated) setActivePerson(updated);
+      await loadPersons();
+    } catch (err) {
+      console.error('重新整理人物失敗:', err);
+    }
   }
 
   async function deletePerson(id: string) {
     if (!confirm('確定刪除這個人物？所有記憶和分析也會一起刪除。')) return;
-    await db.memories.where('personId').equals(id).delete();
-    await db.interests.where('personId').equals(id).delete();
-    await db.giftAnalyses.where('personId').equals(id).delete();
-    await db.persons.delete(id);
-    loadPersons();
+    try {
+      await db.transaction('rw', db.persons, db.memories, db.interests, db.giftAnalyses, async () => {
+        await db.memories.where('personId').equals(id).delete();
+        await db.interests.where('personId').equals(id).delete();
+        await db.giftAnalyses.where('personId').equals(id).delete();
+        await db.persons.delete(id);
+      });
+      if (activePerson?.id === id) setActivePerson(null);
+      await loadPersons();
+    } catch (err) {
+      console.error('刪除人物失敗:', err);
+      alert('刪除失敗，請稍後再試');
+    }
   }
 
   function openPerson(person: Person) {

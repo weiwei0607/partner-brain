@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sparkles, Save } from 'lucide-react';
 import { db, type Person } from '../../db';
 import { calculateBazi } from '../../gemini';
@@ -8,6 +8,12 @@ export function DestinyTab({ person, onPersonUpdated }: { person: Person; onPers
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState(person.destinyNotes ?? '');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setNotesInput(person.destinyNotes ?? '');
+    setEditingNotes(false);
+    setError('');
+  }, [person.id, person.destinyNotes]);
 
   async function handleCalculate() {
     if (!person.birthDate) { setError('請先在人物設定中填入出生日期'); return; }
@@ -22,9 +28,14 @@ export function DestinyTab({ person, onPersonUpdated }: { person: Person; onPers
   }
 
   async function saveNotes() {
-    await db.persons.update(person.id, { destinyNotes: notesInput, updatedAt: Date.now() });
-    setEditingNotes(false);
-    onPersonUpdated();
+    try {
+      await db.persons.update(person.id, { destinyNotes: notesInput, updatedAt: Date.now() });
+      setEditingNotes(false);
+      onPersonUpdated();
+    } catch (err) {
+      console.error('儲存筆記失敗:', err);
+      setError('儲存失敗，請稍後再試');
+    }
   }
 
   const hasBirthInfo = !!person.birthDate;

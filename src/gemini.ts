@@ -1,25 +1,58 @@
 import type { Memory, MemoryCategory, Interest, Person } from './db';
 
 const MODEL = 'gemini-2.5-flash';
+const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+const FETCH_TIMEOUT_MS = 30000;
 
 export function getApiKey(): string {
   return localStorage.getItem('gemini_api_key') ?? '';
+}
+
+async function safeFetch(url: string, init: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const resp = await fetch(url, { ...init, signal: ctrl.signal });
+    return resp;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function extractText(data: unknown): string {
+  const d = data as Record<string, unknown> | undefined;
+  const candidates = d?.candidates as Array<Record<string, unknown>> | undefined;
+  const first = candidates?.[0];
+  const content = first?.content as Record<string, unknown> | undefined;
+  const parts = content?.parts as Array<Record<string, unknown>> | undefined;
+  const text = parts?.[0]?.text as string | undefined;
+  if (text === undefined) {
+    throw new Error('AI 回應格式異常或內容被阻擋');
+  }
+  return text.trim();
 }
 
 async function post(body: object): Promise<string> {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('請先設定 Gemini API Key');
 
-  const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  const resp = await safeFetch(
+    `${API_BASE}/models/${MODEL}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify(body),
+    }
   );
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({})) as { error?: { message?: string } };
     throw new Error(err.error?.message ?? `API 錯誤 ${resp.status}`);
   }
-  const data = await resp.json() as { candidates: { content: { parts: { text: string }[] } }[] };
-  return data.candidates[0].content.parts[0].text.trim();
+  const data = await resp.json();
+  return extractText(data);
 }
 
 function jsonPost(prompt: string) {
@@ -41,11 +74,13 @@ export interface ExtractedMemory {
 }
 
 export async function extractMemories(chatText: string, person: Person): Promise<ExtractedMemory[]> {
+  const MAX_LEN = 8000;
+  const truncated = chatText.length > MAX_LEN ? chatText.slice(0, MAX_LEN) + '\n…（已截斷）' : chatText;
   const raw = await jsonPost(
     `你是一個人際記憶擷取助手。從以下聊天紀錄中，擷取關於「${person.name}（${person.relationship}）」的重要個人資訊。
 
 聊天紀錄：
-${chatText}
+${truncated}
 
 擷取規則：
 - 只記錄 ${person.name} 說的事，忽略日常寒暄
@@ -90,11 +125,14 @@ export async function analyzeScreenshot(imageBase64: string, person: Person): Pr
 confidence 說明：high=截圖明確顯示、medium=有一定根據、low=推測
 沒有有用資訊就回傳 []`;
 
-  const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+  const resp = await safeFetch(
+    `${API_BASE}/models/${MODEL}:generateContent`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
       body: JSON.stringify({
         contents: [{
           parts: [
@@ -111,8 +149,8 @@ confidence 說明：high=截圖明確顯示、medium=有一定根據、low=推�
     const err = await resp.json().catch(() => ({})) as { error?: { message?: string } };
     throw new Error(err.error?.message ?? `API 錯誤 ${resp.status}`);
   }
-  const data = await resp.json() as { candidates: { content: { parts: { text: string }[] } }[] };
-  const raw = data.candidates[0].content.parts[0].text.trim();
+  const data = await resp.json();
+  const raw = extractText(data);
   const parsed = JSON.parse(raw) as ExtractedInterest[];
   return Array.isArray(parsed) ? parsed : [];
 }

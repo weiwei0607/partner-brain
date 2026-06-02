@@ -49,6 +49,9 @@ export function AddPersonModal({ onClose, onSaved, editing }: Props) {
         });
       }
       onSaved();
+    } catch (err) {
+      console.error('儲存人物失敗:', err);
+      alert('儲存失敗，請稍後再試');
     } finally {
       setSaving(false);
     }
