@@ -17,7 +17,7 @@ export function GiftTab({ person }: { person: Person }) {
 
   async function load() {
     const [mems, ints, analyses] = await Promise.all([
-      db.memories.where('personId').equals(person.id).toArray(),
+      db.memories.where('personId').equals(person.id).toArray().then(all => all.filter(m => !m.outdated)),
       db.interests.where('personId').equals(person.id).toArray(),
       db.giftAnalyses.where('personId').equals(person.id).reverse().sortBy('createdAt'),
     ]);
@@ -28,8 +28,10 @@ export function GiftTab({ person }: { person: Person }) {
     setAnalyzing(true); setError(''); setResult(''); setSelected(null);
     try {
       const res = await analyzeGift(input, person, memories, interests);
+      // Save to DB first — if this fails, don't show result to avoid data loss illusion
+      const record = { id: generateId(), personId: person.id, input: input.trim() || '（無備註）', result: res, createdAt: Date.now() };
+      await db.giftAnalyses.add(record);
       setResult(res);
-      await db.giftAnalyses.add({ id: generateId(), personId: person.id, input: input.trim() || '（無備註）', result: res, createdAt: Date.now() });
       load();
     } catch (e) {
       setError(e instanceof Error ? e.message : '分析失敗');

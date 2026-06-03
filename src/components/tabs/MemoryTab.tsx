@@ -37,17 +37,27 @@ export function MemoryTab({ person }: { person: Person }) {
   }
 
   async function saveOne(item: ExtractedMemory) {
-    await db.memories.add({ id: generateId(), personId: person.id, content: item.content, category: item.category, tags: item.tags, sourceText: chatInput.slice(0, 200), createdAt: Date.now() });
-    setExtracted(prev => prev.filter(e => e.content !== item.content));
-    load();
+    try {
+      await db.memories.add({ id: generateId(), personId: person.id, content: item.content, category: item.category, tags: item.tags, sourceText: chatInput.slice(0, 200), createdAt: Date.now() });
+      setExtracted(prev => prev.filter(e => e.content !== item.content));
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '儲存失敗');
+    }
   }
 
   async function saveAll() {
     const now = Date.now();
-    for (const item of extracted) {
-      await db.memories.add({ id: generateId(), personId: person.id, content: item.content, category: item.category, tags: item.tags, sourceText: chatInput.slice(0, 200), createdAt: now });
+    try {
+      await db.transaction('rw', db.memories, async () => {
+        for (const item of extracted) {
+          await db.memories.add({ id: generateId(), personId: person.id, content: item.content, category: item.category, tags: item.tags, sourceText: chatInput.slice(0, 200), createdAt: now });
+        }
+      });
+      setExtracted([]); setChatInput(''); setShowPanel(false); load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '批量儲存失敗，請重試');
     }
-    setExtracted([]); setChatInput(''); setShowPanel(false); load();
   }
 
   async function deleteMemory(id: string) {

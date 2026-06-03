@@ -76,17 +76,27 @@ export function InterestTab({ person }: { person: Person }) {
   }
 
   async function saveOne(item: ExtractedInterest) {
-    await db.interests.add({ id: generateId(), personId: person.id, content: item.content, confidence: item.confidence, sourceDescription: item.sourceDescription, imageThumbnail: thumbnailImage, tags: item.tags, createdAt: Date.now() });
-    setExtracted(prev => prev.filter(e => e.content !== item.content));
-    load();
+    try {
+      await db.interests.add({ id: generateId(), personId: person.id, content: item.content, confidence: item.confidence, sourceDescription: item.sourceDescription, imageThumbnail: thumbnailImage, tags: item.tags, createdAt: Date.now() });
+      setExtracted(prev => prev.filter(e => e.content !== item.content));
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '儲存失敗');
+    }
   }
 
   async function saveAll() {
     const now = Date.now();
-    for (const item of extracted) {
-      await db.interests.add({ id: generateId(), personId: person.id, content: item.content, confidence: item.confidence, sourceDescription: item.sourceDescription, imageThumbnail: thumbnailImage, tags: item.tags, createdAt: now });
+    try {
+      await db.transaction('rw', db.interests, async () => {
+        for (const item of extracted) {
+          await db.interests.add({ id: generateId(), personId: person.id, content: item.content, confidence: item.confidence, sourceDescription: item.sourceDescription, imageThumbnail: thumbnailImage, tags: item.tags, createdAt: now });
+        }
+      });
+      setExtracted([]); setPreviewImage(''); setThumbnailImage(''); load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '批量儲存失敗，請重試');
     }
-    setExtracted([]); setPreviewImage(''); setThumbnailImage(''); load();
   }
 
   async function deleteInterest(id: string) {
