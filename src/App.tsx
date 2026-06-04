@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Settings, ChevronLeft, Pencil, Trash2, Eye, EyeOff, Brain, MessageSquare, ImagePlus, Gift, Star } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Settings, ChevronLeft, Pencil, Trash2, Brain, MessageSquare, ImagePlus, Gift, Star, MessageCircle, Eye, EyeOff } from 'lucide-react';
 import { db, type Person } from './db';
 import { getApiKey } from './gemini';
 import { AddPersonModal } from './components/AddPersonModal';
@@ -7,20 +7,23 @@ import { MemoryTab } from './components/tabs/MemoryTab';
 import { InterestTab } from './components/tabs/InterestTab';
 import { DestinyTab } from './components/tabs/DestinyTab';
 import { GiftTab } from './components/tabs/GiftTab';
+import { AskTab } from './components/tabs/AskTab';
 
-type PersonTab = 'destiny' | 'memory' | 'interest' | 'gift';
+type PersonTab = 'destiny' | 'memory' | 'interest' | 'gift' | 'ask';
 
 const PERSON_TABS: { id: PersonTab; label: string; icon: React.ElementType }[] = [
   { id: 'destiny', label: '命盤', icon: Star },
   { id: 'memory', label: '說過的話', icon: MessageSquare },
   { id: 'interest', label: '喜歡的東西', icon: ImagePlus },
   { id: 'gift', label: '禮物', icon: Gift },
+  { id: 'ask', label: '問 AI', icon: MessageCircle },
 ];
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
   const [key, setKey] = useState(localStorage.getItem('gemini_api_key') ?? '');
   const [show, setShow] = useState(false);
   const [saved, setSaved] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   function save() {
     localStorage.setItem('gemini_api_key', key.trim());
@@ -28,14 +31,51 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     setTimeout(() => { setSaved(false); onClose(); }, 800);
   }
 
+  async function exportData() {
+    const [persons, memories, interests, giftAnalyses] = await Promise.all([
+      db.persons.toArray(),
+      db.memories.toArray(),
+      db.interests.toArray(),
+      db.giftAnalyses.toArray(),
+    ]);
+    const data = { version: 1, exportedAt: Date.now(), persons, memories, interests, giftAnalyses };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `partner-brain-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importData(file: File) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.persons || !Array.isArray(data.persons)) throw new Error('檔案格式不正確');
+      await db.transaction('rw', db.persons, db.memories, db.interests, db.giftAnalyses, async () => {
+        for (const p of data.persons) await db.persons.put(p);
+        if (data.memories) for (const m of data.memories) await db.memories.put(m);
+        if (data.interests) for (const i of data.interests) await db.interests.put(i);
+        if (data.giftAnalyses) for (const g of data.giftAnalyses) await db.giftAnalyses.put(g);
+      });
+      alert('資料匯入成功！請重新整理頁面。');
+      window.location.reload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '匯入失敗');
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl p-6 space-y-4">
+      <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-white">設定</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700">✕</button>
         </div>
+
+        {/* API Key */}
         <div>
           <label className="text-xs text-slate-400 mb-1.5 block">Gemini API Key</label>
           <div className="relative">
@@ -46,6 +86,22 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           </div>
           <p className="text-[11px] text-slate-500 mt-1.5">至 Google AI Studio 取得免費 API Key，儲存在本機不上傳</p>
         </div>
+
+        {/* Backup */}
+        <div className="space-y-2">
+          <label className="text-xs text-slate-400 block">資料備份</label>
+          <div className="flex gap-2">
+            <button onClick={exportData} className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm font-semibold hover:bg-slate-700 transition-colors">
+              匯出 JSON
+            </button>
+            <button onClick={() => fileRef.current?.click()} className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm font-semibold hover:bg-slate-700 transition-colors">
+              匯入 JSON
+            </button>
+          </div>
+          <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) importData(f); e.target.value = ''; }} />
+          <p className="text-[11px] text-slate-600">資料只存於本機瀏覽器，建議定期備份</p>
+        </div>
+
         <button onClick={save} className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${saved ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white hover:bg-rose-600'}`}>
           {saved ? '已儲存 ✓' : '儲存'}
         </button>
@@ -166,6 +222,7 @@ export default function App() {
           {activeTab === 'memory' && <MemoryTab person={activePerson} />}
           {activeTab === 'interest' && <InterestTab person={activePerson} />}
           {activeTab === 'gift' && <GiftTab person={activePerson} />}
+          {activeTab === 'ask' && <AskTab person={activePerson} />}
         </main>
 
         {showAdd && (
