@@ -112,20 +112,53 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
 
 function PersonCard({ person, onClick, onEdit, onDelete }: { person: Person; onClick: () => void; onEdit: () => void; onDelete: () => void }) {
   return (
-    <div className="relative bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden group">
-      <div className={`h-20 bg-gradient-to-br ${person.color} flex items-end p-3`}>
-        <span className="text-4xl">{person.avatar}</span>
+    <div
+      className="relative rounded-2xl overflow-hidden group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 pb-slide-up"
+      style={{
+        background: 'linear-gradient(160deg, #0f172a 0%, #0a0f1e 100%)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 28px rgba(0,0,0,0.5), 0 0 0 1px rgba(244,63,94,0.12)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 12px rgba(0,0,0,0.4)';
+      }}
+    >
+      {/* Gradient banner */}
+      <div className={`h-[4.5rem] bg-gradient-to-br ${person.color} flex items-end p-3 relative overflow-hidden`}>
+        {/* Shine overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+        <span className="text-4xl relative z-10 drop-shadow-sm">{person.avatar}</span>
       </div>
-      <div className="p-3">
-        <p className="font-semibold text-white text-sm">{person.name}</p>
-        <p className="text-xs text-slate-400 mt-0.5">{person.relationship}</p>
-        {person.mbti && <span className="inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">{person.mbti}</span>}
+
+      {/* Card body */}
+      <div className="p-3 pb-3.5">
+        <p className="font-bold text-white text-[13px] leading-tight truncate">{person.name}</p>
+        <p className="text-[11px] text-slate-400 mt-0.5 truncate">{person.relationship}</p>
+        {person.mbti && (
+          <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full font-semibold"
+            style={{ background: 'rgba(244,63,94,0.12)', color: '#fb7185', border: '1px solid rgba(244,63,94,0.2)' }}>
+            {person.mbti}
+          </span>
+        )}
       </div>
-      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={e => { e.stopPropagation(); onEdit(); }} className="w-7 h-7 rounded-lg bg-black/40 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/60"><Pencil className="w-3 h-3" /></button>
-        <button onClick={e => { e.stopPropagation(); onDelete(); }} className="w-7 h-7 rounded-lg bg-red-500/60 backdrop-blur-sm text-white flex items-center justify-center hover:bg-red-500/80"><Trash2 className="w-3 h-3" /></button>
+
+      {/* Hover actions */}
+      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-150">
+        <button onClick={e => { e.stopPropagation(); onEdit(); }}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white transition-colors"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>
+          <Pencil className="w-3 h-3" />
+        </button>
+        <button onClick={e => { e.stopPropagation(); onDelete(); }}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white transition-colors"
+          style={{ background: 'rgba(239,68,68,0.55)', backdropFilter: 'blur(8px)' }}>
+          <Trash2 className="w-3 h-3" />
+        </button>
       </div>
-      <button onClick={onClick} className="absolute inset-0" />
+      <button onClick={onClick} className="absolute inset-0" aria-label={`查看 ${person.name}`} />
     </div>
   );
 }
@@ -238,22 +271,28 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-lg border-b border-slate-800">
-        <div className="max-w-lg mx-auto px-5 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b border-slate-800/60"
+        style={{ background: 'rgba(2,6,23,0.88)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+        <div className="max-w-lg mx-auto px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-rose-500 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', boxShadow: '0 4px 12px rgba(244,63,94,0.35)' }}>
               <Brain className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-base font-bold">人際腦</h1>
-              <p className="text-[11px] text-slate-400">{persons.length} 個人物</p>
+              <h1 className="text-[15px] font-black tracking-tight text-white leading-none">人際腦</h1>
+              <p className="text-[10px] text-slate-500 mt-0.5 font-medium">{persons.length > 0 ? `${persons.length} 個人物` : 'AI 人際記憶助手'}</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => setShowSettings(true)} className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700 transition-colors">
+          <div className="flex gap-1.5">
+            <button onClick={() => setShowSettings(true)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <Settings className="w-4 h-4" />
             </button>
-            <button onClick={() => { setEditingPerson(undefined); setShowAdd(true); }} className="w-9 h-9 rounded-xl bg-rose-500 flex items-center justify-center text-white hover:bg-rose-600 transition-colors">
+            <button onClick={() => { setEditingPerson(undefined); setShowAdd(true); }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-white hover:brightness-110 transition-all active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', boxShadow: '0 4px 12px rgba(244,63,94,0.3)' }}>
               <Plus className="w-5 h-5" />
             </button>
           </div>
