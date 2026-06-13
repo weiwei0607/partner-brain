@@ -141,3 +141,79 @@ body {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+
+/* ── Relationship strength bar ────────────────────── */
+.strength-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--rose) 0%, #e11d48 100%);
+  box-shadow: 0 0 6px rgba(244,63,94,0.35);
+}
+
+/* ── Memory entry — handwritten feel ─────────────── */
+.memory-entry {
+  position: relative;
+  padding-left: 1rem;
+}
+.memory-entry::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, var(--rose), transparent);
+  opacity: 0.4;
+}
+
+/* ── Person banner gradient overlay ──────────────── */
+.banner-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.12) 0%,
+    rgba(0,0,0,0.08) 100%
+  );
+}
+
+/* ── Subtle watercolor wash on hover ─────────────── */
+@keyframes pb-ripple {
+  0%   { transform: scale(0); opacity: 0.18; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.ripple-rose {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--rose);
+  pointer-events: none;
+  animation: pb-ripple 0.55s ease-out forwards;
+  transform-origin: center;
+}
+
+/* ── Tag category chips ───────────────────────────── */
+.tag-chip {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* ── AI suggestion card — soft glow ──────────────── */
+.ai-suggestion {
+  background: linear-gradient(135deg, rgba(244,63,94,0.04) 0%, rgba(249,168,212,0.06) 100%);
+  border: 1px solid var(--rose-border);
+  border-left: 3px solid var(--rose);
+}
+
+/* ── Playfair italic accent ───────────────────────── */
+.playfair-italic {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  color: var(--text-2);
+}
