@@ -3,6 +3,7 @@ import { Plus, Settings, ChevronLeft, Pencil, Trash2, Brain, MessageSquare, Imag
 import { db, type Person } from './db';
 import { getApiKey } from './gemini';
 import { AddPersonModal } from './components/AddPersonModal';
+import { SplashScreen } from './components/SplashScreen';
 import { MemoryTab } from './components/tabs/MemoryTab';
 import { InterestTab } from './components/tabs/InterestTab';
 import { DestinyTab } from './components/tabs/DestinyTab';
@@ -202,6 +203,14 @@ function PersonCard({ person, onClick, onEdit, onDelete }: {
 }
 
 /* ── Main App ─────────────────────────────────── */
+function shouldShowSplash(): boolean {
+  try {
+    if (sessionStorage.getItem('pb_splash')) return false;
+    sessionStorage.setItem('pb_splash', '1');
+    return true;
+  } catch { return false; }
+}
+
 export default function App() {
   const [persons, setPersons] = useState<Person[]>([]);
   const [activePerson, setActivePerson] = useState<Person | null>(null);
@@ -209,6 +218,7 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Person | undefined>();
   const [showSettings, setShowSettings] = useState(!getApiKey());
+  const [splash, setSplash] = useState<boolean>(shouldShowSplash);
 
   useEffect(() => { loadPersons(); }, []);
 
@@ -320,6 +330,7 @@ export default function App() {
   /* ── Home view ── */
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      {splash && <SplashScreen onDone={() => setSplash(false)} />}
       {/* Top rose line */}
       <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, transparent, var(--rose) 30%, var(--rose) 70%, transparent)', opacity: 0.25 }} />
 
