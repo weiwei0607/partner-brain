@@ -148,22 +148,7 @@ function PersonCard({ person, onClick, onEdit, onDelete }: {
   person: Person; onClick: () => void; onEdit: () => void; onDelete: () => void;
 }) {
   return (
-    <div
-      className="relative rounded-3xl overflow-hidden group cursor-pointer pb-slide-up transition-all duration-200 hover:-translate-y-0.5"
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        boxShadow: '0 2px 12px rgba(28,21,17,0.06), 0 1px 3px rgba(28,21,17,0.04)',
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 28px rgba(28,21,17,0.10), 0 2px 8px rgba(28,21,17,0.06)';
-        (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-2)';
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 12px rgba(28,21,17,0.06), 0 1px 3px rgba(28,21,17,0.04)';
-        (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
-      }}
-    >
+    <div className="person-card relative group cursor-pointer pb-slide-up">
       {/* Gradient banner */}
       <div className={`h-[4.5rem] bg-gradient-to-br ${person.color} flex items-end p-3 relative overflow-hidden`}>
         <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
@@ -332,7 +317,7 @@ export default function App() {
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       {splash && <SplashScreen onDone={() => setSplash(false)} />}
       {/* Top rose line */}
-      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, transparent, var(--rose) 30%, var(--rose) 70%, transparent)', opacity: 0.25 }} />
+      <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(244,63,94,0.4) 35%, rgba(244,63,94,0.4) 65%, transparent)' }} />
 
       {/* Header */}
       <header className="sticky top-0 z-40 border-b"
@@ -344,22 +329,27 @@ export default function App() {
         }}>
         <div className="max-w-lg mx-auto px-5 py-3.5 flex items-center justify-between">
           {/* Brand */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
               style={{
-                background: 'linear-gradient(135deg, var(--rose) 0%, #e11d48 100%)',
-                boxShadow: '0 4px 12px rgba(244,63,94,0.28)',
+                background: 'linear-gradient(135deg, #F43F5E 0%, #e11d48 100%)',
+                boxShadow: '0 4px 14px rgba(244,63,94,0.30)',
               }}>
-              <Brain size={18} className="text-white" />
+              <Brain size={17} className="text-white" />
             </div>
             <div>
-              <h1 className="font-playfair font-semibold text-[16px] leading-none"
-                style={{ color: 'var(--text-1)', fontFamily: 'Playfair Display, serif' }}>
+              <h1 style={{
+                fontFamily: 'Playfair Display, Georgia, serif',
+                fontWeight: 600,
+                fontSize: '17px',
+                letterSpacing: '-0.02em',
+                color: 'var(--text-1)',
+                lineHeight: 1,
+              }}>
                 人際腦
               </h1>
-              <p className="text-[10px] mt-0.5 font-medium"
-                style={{ color: 'var(--text-3)' }}>
-                {persons.length > 0 ? `${persons.length} 個人物` : 'AI 人際記憶助手'}
+              <p style={{ fontSize: '10px', marginTop: '3px', color: 'var(--text-3)', fontStyle: 'italic', letterSpacing: '0.02em' }}>
+                {persons.length > 0 ? `${persons.length} 位重要的人` : 'AI 人際記憶助手'}
               </p>
             </div>
           </div>
@@ -383,22 +373,26 @@ export default function App() {
       <main className="max-w-lg mx-auto px-5 py-6 pb-12">
         {persons.length === 0 ? (
           /* Empty state */
-          <div className="flex flex-col items-center py-24 pb-slide-up">
-            <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6"
-              style={{ background: 'var(--rose-dim)', border: '1px solid var(--rose-border)' }}>
-              <Brain size={36} style={{ color: 'var(--rose)' }} />
+          <div className="flex flex-col items-center py-20 pb-slide-up">
+            {/* Decorative rose ring */}
+            <div className="relative mb-8">
+              <div className="w-24 h-24 rounded-full" style={{ background: 'var(--rose-dim)', border: '1px solid var(--rose-border)' }} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Brain size={32} style={{ color: 'var(--rose)' }} />
+              </div>
+              <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full" style={{ background: 'var(--rose)', opacity: 0.3 }} />
+              <div className="absolute -bottom-2 -left-2 w-3 h-3 rounded-full" style={{ background: 'var(--rose)', opacity: 0.2 }} />
             </div>
-            <h2 className="font-playfair font-semibold text-xl mb-2"
-              style={{ color: 'var(--text-1)', fontFamily: 'Playfair Display, serif' }}>
+            <h2 style={{ fontFamily: 'Playfair Display, Georgia, serif', fontSize: '22px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '8px', letterSpacing: '-0.02em' }}>
               還沒有人物
             </h2>
-            <p className="text-[14px] mb-8 text-center leading-relaxed" style={{ color: 'var(--text-3)' }}>
-              加入第一個重要的人<br />開始記錄他的故事
+            <p style={{ fontStyle: 'italic', fontSize: '13px', color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.7, marginBottom: '32px' }}>
+              加入第一個重要的人<br />開始記錄他說過的話、喜歡的事
             </p>
             <button onClick={() => { setEditingPerson(undefined); setShowAdd(true); }}
               className="flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold btn-rose">
               <Plus size={16} />
-              新增人物
+              新增第一個人
             </button>
           </div>
         ) : (
