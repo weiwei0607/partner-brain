@@ -14,7 +14,7 @@
 
 本機資料儲存在瀏覽器（IndexedDB），不會上傳到任何伺服器。
 
-👉 **[點此開啟](https://你的部署網址)**
+👉 **[點此開啟](https://weiwei0607.github.io/partner-brain/)**
 
 ## 🛠️ 技術棧
 

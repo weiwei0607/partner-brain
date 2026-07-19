@@ -53,6 +53,7 @@ export function SplashScreen({ onDone }: Props) {
     let raf: number;
 
     function draw(now: number) {
+      if (!ctx) return;
       const elapsed = now - startTime;
       const t = Math.min(elapsed / DURATION, 1);
 
