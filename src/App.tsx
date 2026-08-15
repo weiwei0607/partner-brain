@@ -3,6 +3,7 @@ import { Plus, Settings, ChevronLeft, Pencil, Trash2, Brain, MessageSquare, Imag
 import { db, type Person } from './db';
 import { getApiKey } from './gemini';
 import { AddPersonModal } from './components/AddPersonModal';
+import { loadDemoData, DEMO_FLAG } from './demoSeed';
 import { SplashScreen } from './components/SplashScreen';
 import { MemoryTab } from './components/tabs/MemoryTab';
 import { InterestTab } from './components/tabs/InterestTab';
@@ -202,7 +203,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<PersonTab>('destiny');
   const [showAdd, setShowAdd] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Person | undefined>();
-  const [showSettings, setShowSettings] = useState(!getApiKey());
+  const [showSettings, setShowSettings] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const isDemo = !getApiKey() && localStorage.getItem(DEMO_FLAG) === '1';
   const [splash, setSplash] = useState<boolean>(shouldShowSplash);
 
   useEffect(() => { loadPersons(); }, []);
@@ -369,6 +372,16 @@ export default function App() {
         </div>
       </header>
 
+      {isDemo && (
+        <div className="max-w-lg mx-auto px-5 pt-4">
+          <div className="rounded-xl px-4 py-3 text-xs leading-relaxed"
+            style={{ background: 'var(--rose-dim)', border: '1px solid var(--rose-border)', color: 'var(--text-2)' }}>
+            示範模式：目前顯示的是虛構人物資料。記錄、瀏覽、分類都可以直接操作；
+            截圖抽興趣、禮物建議、問 AI 需要在設定裡填自己的 Gemini API Key。
+          </div>
+        </div>
+      )}
+
       {/* Main */}
       <main className="max-w-lg mx-auto px-5 py-6 pb-12">
         {persons.length === 0 ? (
@@ -394,6 +407,22 @@ export default function App() {
               <Plus size={16} />
               新增第一個人
             </button>
+            <button
+              disabled={demoLoading}
+              onClick={async () => {
+                setDemoLoading(true);
+                await loadDemoData();
+                await loadPersons();
+                setDemoLoading(false);
+              }}
+              className="mt-3 px-6 py-3 rounded-2xl text-sm font-medium transition-colors"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
+              {demoLoading ? '載入中…' : '先看示範資料'}
+            </button>
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', textAlign: 'center', marginTop: '14px', lineHeight: 1.7 }}>
+              示範資料是三位虛構人物，不需要 API Key<br />
+              資料只存在你的瀏覽器，隨時可以刪掉
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
