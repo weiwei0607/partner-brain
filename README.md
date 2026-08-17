@@ -12,7 +12,8 @@
 
 ## 🚀 線上使用
 
-本機資料儲存在瀏覽器（IndexedDB），不會上傳到任何伺服器。
+人物、記憶、興趣資料存在瀏覽器本機（IndexedDB），不會上傳到自家伺服器。
+使用「AI 計算八字」「截圖分析」「禮物建議」「問 AI」等功能時，該人物的相關資料會傳送給 Google Gemini API 以取得回應（使用者自備的 API Key，Google 是唯一的第三方）。
 
 👉 **[點此開啟](https://weiwei0607.github.io/partner-brain/)**
 

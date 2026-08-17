@@ -1,5 +1,5 @@
-const CACHE_NAME = 'partner-brain-v1';
-const PRECACHE = ['./', './index.html', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png'];
+const CACHE_NAME = 'partner-brain-v2';
+const PRECACHE = ['./', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -26,6 +26,22 @@ self.addEventListener('fetch', (event) => {
   // API, Google Fonts, etc.) are left to the browser and are never cached.
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Navigation requests (loading the app shell / index.html) are network-first
+  // so a new deploy is picked up immediately instead of serving a stale shell
+  // that references hashed asset filenames which no longer exist (404).
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./')))
+    );
     return;
   }
 

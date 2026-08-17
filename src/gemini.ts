@@ -19,6 +19,21 @@ async function safeFetch(url: string, init: RequestInit): Promise<Response> {
   }
 }
 
+// Gemini sometimes wraps JSON in a markdown code block or returns malformed
+// output. Surfacing the raw "Unexpected token" SyntaxError to the user is
+// meaningless, so we normalize it into a friendly, actionable message.
+function safeJsonParse<T>(raw: string): T {
+  let text = raw.trim();
+  if (text.startsWith('```')) {
+    text = text.replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error('AI 回應的格式無法解析，請重試一次');
+  }
+}
+
 function extractText(data: unknown): string {
   const d = data as Record<string, unknown> | undefined;
   const candidates = d?.candidates as Array<Record<string, unknown>> | undefined;
@@ -91,7 +106,7 @@ ${truncated}
 回傳 JSON array（沒有值得記錄的就回傳 []）：
 [{"content":"...","category":"喜好","tags":["關鍵字1","關鍵字2"]}]`
   );
-  const parsed = JSON.parse(raw) as ExtractedMemory[];
+  const parsed = safeJsonParse<ExtractedMemory[]>(raw);
   return Array.isArray(parsed) ? parsed : [];
 }
 
@@ -151,7 +166,7 @@ confidence 說明：high=截圖明確顯示、medium=有一定根據、low=推�
   }
   const data = await resp.json();
   const raw = extractText(data);
-  const parsed = JSON.parse(raw) as ExtractedInterest[];
+  const parsed = safeJsonParse<ExtractedInterest[]>(raw);
   return Array.isArray(parsed) ? parsed : [];
 }
 

@@ -29,7 +29,12 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   function save() {
-    localStorage.setItem('gemini_api_key', key.trim());
+    try {
+      localStorage.setItem('gemini_api_key', key.trim());
+    } catch {
+      alert('無法儲存到瀏覽器儲存空間（可能是無痕模式或儲存空間已滿），這次設定不會被記住。');
+      return;
+    }
     setSaved(true);
     setTimeout(() => { setSaved(false); onClose(); }, 800);
   }
@@ -277,16 +282,17 @@ export default function App() {
           </div>
 
           {/* Tab bar */}
-          <div className="max-w-lg mx-auto px-5 flex border-t" style={{ borderColor: 'var(--border)' }}>
+          <div className="max-w-lg mx-auto px-5 flex border-t overflow-x-auto" style={{ borderColor: 'var(--border)' }}>
             {PERSON_TABS.map(t => {
               const active = activeTab === t.id;
               const Icon = t.icon;
               return (
                 <button key={t.id} onClick={() => setActiveTab(t.id)}
-                  className="flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0"
                   style={{
                     color: active ? 'var(--rose)' : 'var(--text-3)',
                     borderBottom: `2px solid ${active ? 'var(--rose)' : 'transparent'}`,
+                    minWidth: 'max-content',
                   }}>
                   <Icon size={13} />
                   {t.label}
@@ -421,7 +427,7 @@ export default function App() {
             </button>
             <p style={{ fontSize: '11px', color: 'var(--text-3)', textAlign: 'center', marginTop: '14px', lineHeight: 1.7 }}>
               示範資料是三位虛構人物，不需要 API Key<br />
-              資料只存在你的瀏覽器，隨時可以刪掉
+              人物與記憶都存在你的瀏覽器裡；用到 AI 功能時，該人物的資料才會傳給 Gemini
             </p>
           </div>
         ) : (

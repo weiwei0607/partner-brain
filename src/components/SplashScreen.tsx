@@ -165,7 +165,8 @@ export function SplashScreen({ onDone }: Props) {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-[9999] cursor-none"
+      onClick={onDone}
+      className="fixed inset-0 z-[9999] cursor-pointer"
       style={{ width: '100vw', height: '100vh' }}
     />
   );

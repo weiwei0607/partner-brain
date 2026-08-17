@@ -41,6 +41,7 @@ export function GiftTab({ person }: { person: Person }) {
   const likeCount = memories.filter(m => m.category === '喜好').length;
   const interestCount = interests.length;
   const display = selected?.result ?? result;
+  const hasData = memories.length > 0 || interests.length > 0;
 
   return (
     <div className="space-y-4">
@@ -74,7 +75,7 @@ export function GiftTab({ person }: { person: Person }) {
         {error && <p className="text-xs text-red-400">{error}</p>}
         <button
           onClick={handleAnalyze}
-          disabled={analyzing}
+          disabled={analyzing || (!hasData && !input.trim())}
           className="w-full py-3 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
         >
           {analyzing ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />AI 分析中...</> : <><Sparkles className="w-4 h-4" />生成禮物建議</>}

@@ -35,9 +35,14 @@ function createThumbnail(base64: string): Promise<string> {
       canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
+    // If the file isn't a decodable image, fall back to the original
+    // (still-valid) base64 instead of hanging forever.
+    img.onerror = () => resolve(base64);
     img.src = base64;
   });
 }
+
+const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
 
 export function InterestTab({ person }: { person: Person }) {
   const [interests, setInterests] = useState<Interest[]>([]);
@@ -56,7 +61,14 @@ export function InterestTab({ person }: { person: Person }) {
   }
 
   async function handleFile(file: File) {
-    if (!file.type.startsWith('image/')) return;
+    if (!file.type.startsWith('image/')) {
+      setError('請上傳圖片檔案（PNG / JPG 等）');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setError('圖片太大了（上限 8MB），請上傳較小的截圖');
+      return;
+    }
     const base64 = await fileToBase64(file);
     const thumb = await createThumbnail(base64);
     setPreviewImage(base64);
@@ -108,8 +120,8 @@ export function InterestTab({ person }: { person: Person }) {
       {/* Upload area */}
       <label
         onDragOver={e => e.preventDefault()}
-        onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
-        className="flex flex-col items-center justify-center w-full h-36 rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900 hover:border-rose-500/50 cursor-pointer transition-colors"
+        onDrop={e => { e.preventDefault(); if (analyzing) return; const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+        className={`flex flex-col items-center justify-center w-full h-36 rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900 transition-colors ${analyzing ? 'cursor-not-allowed opacity-80' : 'hover:border-rose-500/50 cursor-pointer'}`}
       >
         {analyzing ? (
           <div className="flex flex-col items-center gap-2">
@@ -131,7 +143,7 @@ export function InterestTab({ person }: { person: Person }) {
             <p className="text-xs text-slate-500 mt-1">IG、小紅書、Threads 截圖皆可</p>
           </>
         )}
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" disabled={analyzing} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
       </label>
 
       {error && <p className="text-xs text-red-400 px-1">{error}</p>}

@@ -109,7 +109,7 @@ export async function loadDemoData() {
     for (const m of memories) await db.memories.put(m);
     for (const i of interests) await db.interests.put(i);
   });
-  localStorage.setItem(DEMO_FLAG, '1');
+  try { localStorage.setItem(DEMO_FLAG, '1'); } catch { /* non-fatal: demo data itself still loaded into IndexedDB */ }
 }
 
 export async function clearDemoData() {
